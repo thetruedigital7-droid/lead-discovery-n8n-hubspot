@@ -2,7 +2,7 @@
 
 An automated lead-generation pipeline built in n8n that scrapes local businesses matching a target profile, extracts structured contact details with an AI model, and pushes clean, deduplicated records into HubSpot CRM as Contacts, Companies, and Deals.
 
-🎥 **Demo video:** [add your Loom link here]
+🎥 **Demo video:** [https://www.loom.com/share/f932baf8f9a841a2aad5dc8afe871c36]
 
 ## What it does
 
