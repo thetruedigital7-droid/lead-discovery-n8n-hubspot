@@ -1,0 +1,298 @@
+{
+  "name": "Orchestrator 01 — Lead Discovery",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "5fdbc7f6-688c-4cc3-9aaf-1b568b5a70c3",
+      "name": "When clicking 'Execute workflow'",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-144, 352]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "6ed96bce-9de0-4972-98bd-cae691afa664", "name": "service", "value": "skin clinics", "type": "string" },
+            { "id": "c4fd8e5e-422c-4f3e-a824-98c2bb2af2c2", "name": "city", "value": "Hyderabad", "type": "string" },
+            { "id": "aa59205c-1e44-4835-a14d-0410fdf8f539", "name": "state", "value": "Telangana", "type": "string" },
+            { "id": "1e7ea53f-f925-4f36-b4bb-9ffe8b977bbf", "name": "country", "value": "india", "type": "string" },
+            { "id": "ac2a61d2-debb-48fe-a745-638fe746235c", "name": "search_limit", "value": 10, "type": "number" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "16dd6a49-5c0c-44ac-984e-3c210b6a96f2",
+      "name": "Edit Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [80, 352]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.firecrawl.dev/v2/search",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "firecrawlApi",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "Content-Type", "value": "application/json" }] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": \"{{ $json.city }} {{ $json.service }} in India\",\n  \"limit\": 10\n}",
+        "options": {}
+      },
+      "id": "2ec95157-52fa-49d8-a079-b99b6bd2bd0d",
+      "name": "HTTP Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [304, 352],
+      "credentials": { "firecrawlApi": { "id": "zasi3uAU7LlF3xdy", "name": "Firecrawl account 2" } }
+    },
+    {
+      "parameters": { "fieldToSplitOut": "=data.web", "options": {} },
+      "id": "9c55ef59-6995-42c0-9fa2-e703525b8f4c",
+      "name": "Split Out - Businesses",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [528, 352]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 3 },
+          "conditions": [
+            {
+              "id": "fe2d043c-9143-4db9-b98e-930ef29fa44c",
+              "leftValue": "={{ \n  ![\n    'justdial.com',\n    'instagram.com',\n    'facebook.com',\n    'linkedin.com',\n    'youtube.com',\n    'sulekha.com',\n    'practo.com',\n    'yelp.com'\n  ].some(domain => ($json.url || '').toLowerCase().includes(domain))\n}}",
+              "rightValue": "=justdial.com",
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "0c138f62-e2d8-4a05-8d69-bb312884972f",
+      "name": "If",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [752, 352]
+    },
+    {
+      "parameters": { "operation": "scrape", "url": "={{ $json.url }}", "requestOptions": {} },
+      "id": "3d508553-4263-4ac4-a842-f0f9e7babe4c",
+      "name": "/scrape",
+      "type": "@mendable/n8n-nodes-firecrawl.firecrawl",
+      "typeVersion": 1,
+      "position": [976, 352],
+      "onError": "continueRegularOutput",
+      "credentials": { "firecrawlApi": { "id": "zasi3uAU7LlF3xdy", "name": "Firecrawl account 2" } }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 3 },
+          "conditions": [
+            {
+              "id": "9367bf36-1fcb-4979-ad4e-0061c5fade3c",
+              "leftValue": "={{ $json.success }}",
+              "rightValue": "",
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a906c816-8961-4975-a269-184403d4ac26",
+      "name": "If1",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [1200, 352]
+    },
+    {
+      "parameters": {
+        "text": "={{ $json.data.markdown }}",
+        "attributes": {
+          "attributes": [
+            { "name": "business_name", "description": "The official name of the business or clinic. Extract it from the website content." },
+            { "name": "phone", "description": "The primary business phone number. If multiple phone numbers are found, return the main contact number. If none is found, return an empty value." },
+            { "name": "email", "description": "The primary business email address. If no email is found, return an empty value." },
+            { "name": "address", "description": "The physical business address including locality and city, if available. If no address is found, return an empty value." },
+            { "name": "services", "description": "List the main services or treatments offered by the business. Return each service as a separate item." }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0d56b143-770b-4702-8d27-e3740efb7689",
+      "name": "Information Extractor",
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "typeVersion": 1.2,
+      "position": [1424, 352],
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": { "model": "mistral-medium-latest", "options": {} },
+      "id": "ba47da6d-4e56-4e6b-9e35-bd7bd0e66067",
+      "name": "Mistral Cloud Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatMistralCloud",
+      "typeVersion": 1,
+      "position": [1496, 568],
+      "credentials": { "mistralCloudApi": { "id": "fk9FMbWUMWedR6Gx", "name": "Mistral Cloud account" } }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "167ef298-b658-47a5-9439-04514c5153e3", "name": "business_name", "value": "={{ $json.output.business_name }}", "type": "string" },
+            { "id": "a3ec34d7-c040-4b53-aa1d-3387979ad27c", "name": "phone", "value": "={{ $json.output.phone }}", "type": "string" },
+            { "id": "68a1589c-60b6-433f-8112-ee9463b36aef", "name": "email", "value": "={{ $json.output.email }}", "type": "string" },
+            { "id": "b37aecca-068d-43f3-bbfc-f6944d597cde", "name": "address", "value": "={{ $json.output.address }}", "type": "string" },
+            { "id": "27457a19-9dc2-47ab-9603-6a3734704590", "name": "services", "value": "={{ $json.output.services }}", "type": "string" },
+            { "id": "aa02753d-4dcd-46d4-9cf3-2198022c7078", "name": "domain", "value": "={{ $('Split Out - Businesses').all()[$itemIndex].json.url }}", "type": "string" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5bd9aa69-b9e2-4ad7-84b9-241fcf0251e6",
+      "name": "prepare lead record",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [1776, 352]
+    },
+    {
+      "parameters": {
+        "authentication": "appToken",
+        "email": "={{ $json.email }}",
+        "additionalFields": {
+          "companyName": "={{ $json.business_name }}",
+          "contactOwner": "97193942",
+          "phoneNumber": "={{ $json.phone }}",
+          "websiteUrl": "={{ $json.domain }}"
+        },
+        "options": {}
+      },
+      "id": "915aaa93-e99b-49bc-b937-f3c2400ece7c",
+      "name": "Create or update a contact",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2.2,
+      "position": [2448, 176],
+      "credentials": { "hubspotAppToken": { "id": "nOEMTN8hk2JULnBT", "name": "HubSpot Service Key account" } }
+    },
+    {
+      "parameters": {
+        "authentication": "appToken",
+        "resource": "company",
+        "operation": "create",
+        "name": "={{ $('prepare lead record').item.json.business_name }}",
+        "additionalFields": {
+          "companyOwner": "97193942",
+          "customPropertiesUi": {
+            "customPropertiesValues": [{ "property": "email", "value": "={{ $('prepare lead record').item.json.email }}" }]
+          },
+          "phoneNumber": "={{ $('prepare lead record').item.json.phone }}",
+          "streetAddress": "={{ $('prepare lead record').item.json.address }}",
+          "websiteUrl": "={{ $('prepare lead record').item.json.domain }}"
+        }
+      },
+      "id": "2d4c71c2-6e74-4636-bee0-2aeab0523dd9",
+      "name": "Create a company",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2.2,
+      "position": [2672, 256],
+      "credentials": { "hubspotAppToken": { "id": "nOEMTN8hk2JULnBT", "name": "HubSpot Service Key account" } }
+    },
+    {
+      "parameters": {
+        "authentication": "appToken",
+        "resource": "deal",
+        "stage": "4148336328",
+        "additionalFields": {
+          "dealName": "={{ $('prepare lead record').item.json.business_name }}",
+          "dealOwner": { "__rl": true, "mode": "id", "value": "97193942" }
+        }
+      },
+      "id": "76660071-71a0-44cc-b994-cd5a3e8b7f67",
+      "name": "Create a deal",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2.2,
+      "position": [2896, 256],
+      "credentials": { "hubspotAppToken": { "id": "nOEMTN8hk2JULnBT", "name": "HubSpot Service Key account" } }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 3 },
+          "conditions": [
+            {
+              "id": "9cdc51f8-6474-4dc5-b3ac-4f39d168776e",
+              "leftValue": "={{ Boolean($json.business_name) }}",
+              "rightValue": "",
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "be1b3d52-62a4-4e1c-8652-0d4612f339b1",
+      "name": "If2",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [2000, 352]
+    },
+    {
+      "parameters": {},
+      "id": "3ee1cca9-7167-47fe-a134-77af0883b8f7",
+      "name": "No Operation, do nothing",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [2224, 448]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 3 },
+          "conditions": [
+            {
+              "id": "a1b2c3d4-1111-2222-3333-444455556666",
+              "leftValue": "={{ Boolean($json.email) }}",
+              "rightValue": "",
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "813862b8-a1df-4a72-8889-54ad6a2685bb",
+      "name": "Has Email",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [2224, 256]
+    }
+  ],
+  "connections": {
+    "When clicking 'Execute workflow'": { "main": [[{ "node": "Edit Fields", "type": "main", "index": 0 }]] },
+    "Edit Fields": { "main": [[{ "node": "HTTP Request", "type": "main", "index": 0 }]] },
+    "HTTP Request": { "main": [[{ "node": "Split Out - Businesses", "type": "main", "index": 0 }]] },
+    "Split Out - Businesses": { "main": [[{ "node": "If", "type": "main", "index": 0 }]] },
+    "If": { "main": [[{ "node": "/scrape", "type": "main", "index": 0 }], []] },
+    "/scrape": { "main": [[{ "node": "If1", "type": "main", "index": 0 }]] },
+    "If1": { "main": [[{ "node": "Information Extractor", "type": "main", "index": 0 }], []] },
+    "Information Extractor": { "main": [[{ "node": "prepare lead record", "type": "main", "index": 0 }]] },
+    "Mistral Cloud Chat Model": { "ai_languageModel": [[{ "node": "Information Extractor", "type": "ai_languageModel", "index": 0 }]] },
+    "prepare lead record": { "main": [[{ "node": "If2", "type": "main", "index": 0 }]] },
+    "Create or update a contact": { "main": [[{ "node": "Create a company", "type": "main", "index": 0 }]] },
+    "Create a company": { "main": [[{ "node": "Create a deal", "type": "main", "index": 0 }]] },
+    "If2": { "main": [[{ "node": "Has Email", "type": "main", "index": 0 }], [{ "node": "No Operation, do nothing", "type": "main", "index": 0 }]] },
+    "Has Email": { "main": [[{ "node": "Create or update a contact", "type": "main", "index": 0 }], [{ "node": "Create a company", "type": "main", "index": 0 }]] }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}
